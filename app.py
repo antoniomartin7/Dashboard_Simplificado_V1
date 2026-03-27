@@ -628,7 +628,7 @@ if st.button("🚀 Analizar Cartera", type="primary", use_container_width=True):
 
         # Gráfico 1: Valoración — Bullet/horizontal para mejor legibilidad con muchos tickers
         per_ntm = [max(0, r['datos'].get('per_ntm', 0) or 0) for r in resultados]
-        per_ltm = [max(0, r['datos'].get('per_ltm', 0) or 0) for r in resultados]
+        per_ltm = [max(0, (r['datos'].get('p_ffo', 0) if r['datos'].get('is_reit') else r['datos'].get('per_ltm', 0)) or 0) for r in resultados]
         p_fcf = [max(0, r['datos'].get('p_fcf', 0) or 0) for r in resultados]
 
         fig_val = go.Figure()
@@ -638,7 +638,7 @@ if st.button("🚀 Analizar Cartera", type="primary", use_container_width=True):
             marker_line=dict(width=0),
         ))
         fig_val.add_trace(go.Bar(
-            name='PER LTM', y=tickers_list, x=per_ltm,
+            name='PER LTM / P/FFO', y=tickers_list, x=per_ltm,
             orientation='h', marker_color='#66BB6A',
             marker_line=dict(width=0),
         ))
