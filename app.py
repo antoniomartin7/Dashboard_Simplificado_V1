@@ -627,25 +627,48 @@ if st.button("🚀 Analizar Cartera", type="primary", use_container_width=True):
         tickers_list = [r['ticker'] for r in resultados]
 
         # Gráfico 1: Valoración — Bullet/horizontal para mejor legibilidad con muchos tickers
-        per_ntm = [max(0, r['datos'].get('per_ntm', 0) or 0) for r in resultados]
-        per_ltm = [max(0, (r['datos'].get('p_ffo', 0) if r['datos'].get('is_reit') else r['datos'].get('per_ltm', 0)) or 0) for r in resultados]
-        p_fcf = [max(0, r['datos'].get('p_fcf', 0) or 0) for r in resultados]
+        CAP_VAL = 50
+        per_ntm_real = [max(0, r['datos'].get('per_ntm', 0) or 0) for r in resultados]
+        per_ltm_real = [max(0, (r['datos'].get('p_ffo', 0) if r['datos'].get('is_reit') else r['datos'].get('per_ltm', 0)) or 0) for r in resultados]
+        p_fcf_real = [max(0, r['datos'].get('p_fcf', 0) or 0) for r in resultados]
+
+        per_ntm = [min(v, CAP_VAL) for v in per_ntm_real]
+        per_ltm = [min(v, CAP_VAL) for v in per_ltm_real]
+        p_fcf = [min(v, CAP_VAL) for v in p_fcf_real]
 
         fig_val = go.Figure()
         fig_val.add_trace(go.Bar(
             name='PER NTM', y=tickers_list, x=per_ntm,
             orientation='h', marker_color='#42A5F5',
             marker_line=dict(width=0),
+            customdata=per_ntm_real,
+            hovertemplate='%{y}: <b>%{customdata:.2f}x</b><extra>PER NTM</extra>',
+            text=[f' {v:.1f}x' if v > CAP_VAL else '' for v in per_ntm_real],
+            textposition='inside',
+            insidetextanchor='end',
+            textfont=dict(size=9, color='white'),
         ))
         fig_val.add_trace(go.Bar(
             name='PER LTM / P/FFO', y=tickers_list, x=per_ltm,
             orientation='h', marker_color='#66BB6A',
             marker_line=dict(width=0),
+            customdata=per_ltm_real,
+            hovertemplate='%{y}: <b>%{customdata:.2f}x</b><extra>PER LTM / P/FFO</extra>',
+            text=[f' {v:.1f}x' if v > CAP_VAL else '' for v in per_ltm_real],
+            textposition='inside',
+            insidetextanchor='end',
+            textfont=dict(size=9, color='white'),
         ))
         fig_val.add_trace(go.Bar(
             name='P/FCF', y=tickers_list, x=p_fcf,
             orientation='h', marker_color='#FFA726',
             marker_line=dict(width=0),
+            customdata=p_fcf_real,
+            hovertemplate='%{y}: <b>%{customdata:.2f}x</b><extra>P/FCF</extra>',
+            text=[f' {v:.1f}x' if v > CAP_VAL else '' for v in p_fcf_real],
+            textposition='inside',
+            insidetextanchor='end',
+            textfont=dict(size=9, color='white'),
         ))
         fig_val.add_vline(x=15, line_dash="dot", line_color="rgba(0,200,83,0.4)",
                           annotation_text="15x", annotation_position="top")
@@ -654,15 +677,18 @@ if st.button("🚀 Analizar Cartera", type="primary", use_container_width=True):
         fig_val.update_layout(
             barmode='group',
             title=dict(text='Múltiplos de Valoración', font=dict(size=15)),
-            xaxis_title='Veces (x)',
             height=max(350, len(tickers_list) * 38),
             margin=dict(l=70, r=30, t=50, b=30),
             legend=dict(orientation='h', y=1.08, x=0.5, xanchor='center'),
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             yaxis=dict(autorange='reversed'),
+            xaxis=dict(title='Veces (x)', range=[0, CAP_VAL], dtick=5,
+                       showgrid=True, gridcolor='rgba(128,128,128,0.15)',
+                       gridwidth=0.5, griddash='dot'),
             bargap=0.25,
             bargroupgap=0.08,
+            hoverlabel=dict(font=dict(size=16)),
         )
         st.plotly_chart(fig_val, use_container_width=True)
 
@@ -680,26 +706,33 @@ if st.button("🚀 Analizar Cartera", type="primary", use_container_width=True):
                 orientation='h',
                 marker_color='#AB47BC',
                 marker_line=dict(width=0),
+                hovertemplate='%{y}: <b>%{x:.2f}%</b><extra>Dividendo</extra>',
             ))
             fig_yield.add_trace(go.Bar(
                 name='Recompras', y=tickers_list, x=bb_vals,
                 orientation='h',
                 marker_color='#26A69A',
                 marker_line=dict(width=0),
+                hovertemplate='%{y}: <b>%{x:.2f}%</b><extra>Recompras</extra>',
             ))
             fig_yield.add_vline(x=4, line_dash="dot", line_color="rgba(0,200,83,0.5)",
                                 annotation_text="4%", annotation_position="top")
+            max_yield = max((d + b for d, b in zip(div_vals, bb_vals)), default=10)
+            yield_dtick = 2 if max_yield <= 20 else 5
             fig_yield.update_layout(
                 barmode='stack',
                 title=dict(text='Retorno al Accionista (Total Yield)', font=dict(size=14)),
-                xaxis_title='%',
                 height=max(320, len(tickers_list) * 32),
                 margin=dict(l=60, r=20, t=50, b=30),
                 legend=dict(orientation='h', y=1.08, x=0.5, xanchor='center'),
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
                 yaxis=dict(autorange='reversed'),
+                xaxis=dict(title='%', dtick=yield_dtick,
+                           showgrid=True, gridcolor='rgba(128,128,128,0.15)',
+                           gridwidth=0.5, griddash='dot'),
                 bargap=0.2,
+                hoverlabel=dict(font=dict(size=16)),
             )
             st.plotly_chart(fig_yield, use_container_width=True)
 
@@ -720,21 +753,27 @@ if st.button("🚀 Analizar Cartera", type="primary", use_container_width=True):
                 orientation='h',
                 marker_color=colors,
                 marker_line=dict(width=0),
+                hovertemplate='%{y}: <b>%{x:.2f}x</b><extra>DN/EBITDA</extra>',
             ))
             fig_deuda.add_vline(x=2, line_dash="dash", line_color="#00c853",
                                 annotation_text="Baja", annotation_position="top")
             fig_deuda.add_vline(x=4, line_dash="dash", line_color="#ff1744",
                                 annotation_text="Alta", annotation_position="top")
+            max_deuda = max(deuda_vals) if deuda_vals else 10
+            deuda_dtick = 2 if max_deuda <= 20 else 5
             fig_deuda.update_layout(
                 title=dict(text='Nivel de Deuda (DN / EBITDA)', font=dict(size=14)),
-                xaxis_title='Veces (x)',
                 height=max(320, len(tickers_list) * 32),
                 margin=dict(l=60, r=20, t=50, b=30),
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
                 yaxis=dict(autorange='reversed'),
+                xaxis=dict(title='Veces (x)', dtick=deuda_dtick,
+                           showgrid=True, gridcolor='rgba(128,128,128,0.15)',
+                           gridwidth=0.5, griddash='dot'),
                 showlegend=False,
                 bargap=0.2,
+                hoverlabel=dict(font=dict(size=16)),
             )
             st.plotly_chart(fig_deuda, use_container_width=True)
 
